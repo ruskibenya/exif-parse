@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { ExifTool } = require('exiftool-vendored');
+const sharp = require('sharp');
+
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -26,19 +28,18 @@ function convertGPSCoordToDecimal(coordStr) {
 }
 
 app.post('/extract-metadata', upload.single('photo'), async (req, res) => {
-  const tempFilePath = path.join(os.tmpdir(), `${Date.now()}_${req.file.originalname}`);
+  const tempInputPath = path.join(os.tmpdir(), `${Date.now()}_${req.file.originalname}`);
+  const tempOutputPath = tempInputPath.replace(/\.\w+$/, '.jpg');
 
   try {
-    // Save buffer to a temp file
-    fs.writeFileSync(tempFilePath, req.file.buffer);
+    // Save buffer to disk
+    fs.writeFileSync(tempInputPath, req.file.buffer);
 
-    // Extract metadata from file
-    const tags = await exiftool.read(tempFilePath);
-
+    // Extract metadata
+    const tags = await exiftool.read(tempInputPath);
     let latitude = tags.GPSLatitude;
     let longitude = tags.GPSLongitude;
 
-    // Sometimes GPS comes in string format
     if (typeof latitude === 'string') latitude = convertGPSCoordToDecimal(latitude);
     if (typeof longitude === 'string') longitude = convertGPSCoordToDecimal(longitude);
 
@@ -51,12 +52,29 @@ app.post('/extract-metadata', upload.single('photo'), async (req, res) => {
       model: tags.Model || null
     };
 
-    res.json(metadata);
+    // Convert image to JPEG using sharp
+    await sharp(tempInputPath)
+      .rotate() // auto-orient if needed
+      .jpeg({ quality: 90 })
+      .toFile(tempOutputPath);
+
+    // Read JPEG and convert to base64
+    const jpegBuffer = fs.readFileSync(tempOutputPath);
+    const base64Image = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
+
+    res.json({
+      metadata,
+      convertedImageData: base64Image,
+      originalFormat: req.file.mimetype
+    });
+
   } catch (error) {
     console.error("Error processing image:", error);
-    res.status(500).json({ error: "Failed to extract metadata" });
+    res.status(500).json({ error: "Failed to extract metadata or convert image" });
+
   } finally {
-    fs.unlink(tempFilePath, () => { }); // Clean up temp file
+    fs.unlink(tempInputPath, () => { });
+    fs.unlink(tempOutputPath, () => { });
   }
 });
 
