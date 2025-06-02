@@ -3,10 +3,9 @@ packages = ["imagemagick", "exiftool"]
 
 [phases.setup]
 nixPkgs = ["imagemagick", "exiftool"]
-aptPkgs = ["nodejs"]
 
-[phases.setup.node]
-nodeVersion = "20"
+[phases.install]
+nixPkgs = ["nodejs_20"]
 
 [start]
 cmd = "node index.js"
