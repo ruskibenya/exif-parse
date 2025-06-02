@@ -1,0 +1,2 @@
+[nixpacks]
+packages = ["imagemagick", "exiftool"]
