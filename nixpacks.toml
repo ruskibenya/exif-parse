@@ -1,11 +1,8 @@
 [nixpacks]
-packages = ["imagemagick", "exiftool"]
+packages = ["imagemagick", "exiftool", "nodejs_20"]
 
 [phases.setup]
-nixPkgs = ["imagemagick", "exiftool"]
-
-[phases.install]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["imagemagick", "exiftool", "nodejs_20"]
 
 [start]
 cmd = "node index.js"
